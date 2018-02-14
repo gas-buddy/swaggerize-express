@@ -1,0 +1,45 @@
+box: node:8
+
+services:
+  - djmax/logstashd
+  - gasbuddy/pg-plv8-postgis
+
+build:
+  steps:
+    - script:
+      name: install packages
+      code: |
+        apt-get update
+        apt-get -y install postgresql-client
+
+    - script:
+      name: set NODE_ENV to test and cleanup node_modules for CLI
+      code: |
+        echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+
+    - npm-install
+
+    - script:
+      name: create service env vars
+      code: |
+        export PGHOST=$PG_PLV8_POSTGIS_PORT_5432_TCP_ADDR
+        export PGPORT=$PG_PLV8_POSTGIS_PORT_5432_TCP_PORT
+        export PGUSER=docker
+        export PGPASSWORD=postgis
+
+    - script:
+      name: lint
+      code: npm run lint
+
+    - script:
+      name: test with coverage
+      code: |
+        npm run cover
+
+deploy:
+  steps:
+    - script:
+      name: npm publish
+      code: |
+        echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+        npm publish . --tag latest
